@@ -1,1 +1,60 @@
+### README for Autonomous Tracking and Butterworth Filter Modules
 
+---
+
+## Overview
+
+This package contains two Python modules designed for autonomous tracking and data filtering in robotics applications. The `autonomous_tracking.py` module integrates computer vision and MAVLink communication for object tracking and navigation. The `butterworthfilter_module.py` module implements a Butterworth filter for signal processing, enhancing the tracking accuracy by reducing noise in the data.
+
+## Requirements
+
+- Python 3.x
+- OpenCV (`cv2`)
+- NumPy (`numpy`)
+- SciPy (`scipy`)
+- PyMavlink (`pymavlink`)
+- Matplotlib (`matplotlib`) (optional for data visualization)
+
+## Installation
+
+Ensure you have Python 3 installed. Install the required Python packages using pip:
+
+```
+pip install numpy opencv-python scipy pymavlink matplotlib
+```
+
+## Usage
+
+### Autonomous Tracking
+
+The `autonomous_tracking.py` script performs image processing to track objects, calculating their physical distance and sending control commands via MAVLink. To use it, adjust the MAVLink connection parameters to match your setup and run:
+
+```python
+python autonomous_tracking.py
+```
+
+### Butterworth Filter
+
+The `butterworthfilter_module.py` script can filter a signal using a Butterworth low-pass filter. It is used within the tracking module to smooth the positional data but can be used independently as follows:
+
+```python
+import butterworthfilter_module as bw
+filtered_signal = bw.filter_data(signal, "filename")
+```
+
+Replace `signal` with your data array and `"filename"` with the desired output file name.
+
+## Features
+
+- Object tracking using color segmentation and contour detection.
+- Distance calculation based on object size.
+- MAVLink communication for autonomous navigation.
+- Signal smoothing using a Butterworth filter.
+
+## Contributing
+
+Contributions to this project are welcome. Please fork the repository and submit a pull request with your improvements.
+
+## License
+
+This project is open-source and available under the MIT License.

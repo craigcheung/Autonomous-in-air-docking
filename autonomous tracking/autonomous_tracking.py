@@ -128,7 +128,7 @@ def main():
     #variables, change to actual for drone
     focalLengthTimesWidth = 0.086
     distance_in_meters = 100
-    cent_signal = []
+    signal = []
     SIGNAL_DURATION = 10
     init_time = time.time()
     relative_position_adjustment_x = 0
@@ -152,11 +152,12 @@ def main():
             #cv2.imshow('centroid', img_cent)
                        
             if (filterPixelCount < 100):
-                closest_cent = [0,0,100]
+                rel_pos_adj_x = 0
+                rel_pos_adj_y = 0
                 velocity_z = -0.1
             else:
-                relative_position_adjustment_x = xMeters
-                relative_position_adjustment_y = yMeters
+                rel_pos_adj_x = xMeters
+                rel_pos_adj_y = yMeters
                 #velocity_z = 0
 
             cv2.waitKey(1)
@@ -164,22 +165,19 @@ def main():
             timeLoop = timeEnd - timeStart
             
             
-            if (len(cent_signal) < SIGNAL_DURATION):
-                closest_cent.append(0)
-                cent_signal.append(closest_cent)
-            else:
+            signal.append([rel_pos_adj_x, rel_pos_adj_y, dist_m])
+            if (len(signal) > SIGNAL_DURATION):
                 # not sure if filtered data point should be appended back to signal, because you are refiltering already
                 # filtered data
-                cent_signal.pop(0)
-                closest_cent.append(dist_m)
-                cent_signal.append(closest_cent)
-                closest_cent = bw.filter_data(cent_signal, "test")
+                [rel_pos_adj_x, rel_pos_adj_y, dist_m] = bw.filter_data(cent_signal, filename)
+                pymavlink_data_send(0, -0.1, rel_pos_adj_x, rel_pos_adj_y, dist_m, master)
+                print(str(round(time.time() - init_time, 2)) + " " + str(round(rel_pos_adj_x)) + " "+ str(round(rel_pos_adj_y)) +
+                    " " + str(round(dist_m,2)) + "\n")
+                signal = [] 
             
             # implement control loops for center tracking
             # feed values into pymavlink_data_send, you can change the code as needed for messages sent
-            pymavlink_data_send(0, -0.1, closest_cent[0], closest_cent[1], dist_m, master)
-            print(str(round(time.time() - init_time, 2)) + " " + str(round(closest_cent[0],2)) + " "+ str(round(closest_cent[1],2)) +
-                " " + str(round(dist_m,2)) + "\n")
+            
             f.write(str(round(time.time() - init_time, 2)) + " " + str(round(relative_position_adjustment_x,2)) + " "+ str(round(relative_position_adjustment_y,2)) +
                 " " + str(round(dist_m,2)) + "\n")
             out.write(frame)

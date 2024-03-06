@@ -52,7 +52,7 @@ def calc_phys_dist(centroid, imgx, imgy, mask, focalLengthTimesWidth, filterPixe
     distance_in_meters = calculate_distance(focalLengthTimesWidth, filterPixelCount, imgx)
     centx = centroid[0]
     centy = centroid[1]
-    xMeters, yMeters = convert_pixels_to_meters(centx, centy, distance_in_meters)
+    xMeters, yMeters = convert_pixels_to_meters(centx / imgx, centy / imgy, distance_in_meters)
     return xMeters, yMeters, distance_in_meters
 
 def calulate_overall_mean(mask, imgx, imgy):
@@ -72,10 +72,11 @@ def calculate_distance(focalLengthTimesWidth, filterPixelCount, imgx):
 
 #check math
 def convert_pixels_to_meters(outputx, outputy, distance_in_meters):
-    thetaX = 0.698 #40 degrees
-    thetaY = 0.393 #22.5 degrees
-    xMeters = ((-2.0 * (outputx - 0.5)) * distance_in_meters * math.tan(thetaX))
-    yMeters = ((2.0 *(outputy -0.5)) * distance_in_meters * math.tan(thetaY))
+
+    x_fov = 5.5/12
+    y_fov = 4.5/12
+    xMeters = (2.0 * (outputx - 0.5)) * distance_in_meters * x_fov
+    yMeters = -(2.0 * (outputy - 0.5)) * distance_in_meters * y_fov
     return xMeters, yMeters
 
 def pymavlink_data_send(yawInput, vel_z, pos_x, pos_y, pos_z, master):
@@ -126,9 +127,10 @@ def main():
     out = cv2.VideoWriter('output.mp4', fourcc, 20.0, (imgx, imgy)) 
 
     #variables, change to actual for drone
-    focalLengthTimesWidth = 0.086
+    #focalLengthTimesWidth = 0.086
+    focalLengthTimesWidth =.0652
     distance_in_meters = 100
-    signal = []
+    cent_signal = []
     SIGNAL_DURATION = 10
     init_time = time.time()
     relative_position_adjustment_x = 0
@@ -165,21 +167,22 @@ def main():
             timeLoop = timeEnd - timeStart
             
             
-            signal.append([rel_pos_adj_x, rel_pos_adj_y, dist_m])
-            if (len(signal) > SIGNAL_DURATION):
+            cent_signal.append([rel_pos_adj_x, rel_pos_adj_y, dist_m])
+            if (len(cent_signal) > SIGNAL_DURATION):
                 # not sure if filtered data point should be appended back to signal, because you are refiltering already
                 # filtered data
                 [rel_pos_adj_x, rel_pos_adj_y, dist_m] = bw.filter_data(cent_signal, filename)
-                pymavlink_data_send(0, -0.1, rel_pos_adj_x, rel_pos_adj_y, dist_m, master)
-                print(str(round(time.time() - init_time, 2)) + " " + str(round(rel_pos_adj_x)) + " "+ str(round(rel_pos_adj_y)) +
+                #pymavlink_data_send(0, -0.1, rel_pos_adj_x, rel_pos_adj_y, dist_m, master)
+                print(str(round(time.time() - init_time, 2)) + " " + str(round(rel_pos_adj_x,2)) + " "+ str(round(rel_pos_adj_y,2)) +
                     " " + str(round(dist_m,2)) + "\n")
-                signal = [] 
+                cent_signal = [] 
             
             # implement control loops for center tracking
             # feed values into pymavlink_data_send, you can change the code as needed for messages sent
-            
-            f.write(str(round(time.time() - init_time, 2)) + " " + str(round(relative_position_adjustment_x,2)) + " "+ str(round(relative_position_adjustment_y,2)) +
+            f.write(str(round(time.time() - init_time, 4)) + " " + str(round(rel_pos_adj_x,4)) + " "+ str(round(rel_pos_adj_y,4)) +
                 " " + str(round(dist_m,2)) + "\n")
+            cv2.line(frame, (360, 0), (360, 720), (0, 255, 0))
+            cv2.line(frame, (0, 360), (720, 360), (0, 255, 0))
             out.write(frame)
             
             #print(timeLoop);

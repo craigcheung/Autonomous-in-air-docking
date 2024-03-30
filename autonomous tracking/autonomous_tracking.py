@@ -87,23 +87,23 @@ def pymavlink_data_send(yawInput, vel_z, pos_x, pos_y, pos_z, master):
     mode = 0b100111000000 #pos + velo control + yaw maybe remove first 1.
     
     msg = master.mav.set_position_target_local_ned_encode(
-        time_boot_ms=int(time.time() * 1000) & 0xFFFFFFFF,
-        target_system=1,  # Replace with your Pixhawk system ID
-        target_component=mavutil.mavlink.MAV_COMP_ID_ALL,
-        coordinate_frame=mavutil.mavlink.MAV_FRAME_LOCAL_FRD, ##Define MAV_FRAME_LOCAL_NED as position rel origin
+        time_boot_ms = int(time.time() * 1000) & 0xFFFFFFFF,
+        target_system = 1,  # Replace with your Pixhawk system ID
+        target_component = mavutil.mavlink.MAV_COMP_ID_ALL,
+        coordinate_frame = mavutil.mavlink.MAV_FRAME_BODY_OFFSET_FRD, # MAV_FRAME_LOCAL_FRD ##Define MAV_FRAME_LOCAL_NED as position rel origin
         ##DEFINE MAV_FRAME_LOCAL_OFFSET_NED as position relative to current... MAV_FRAME_LOCAL_OFFSET_NED #body should be relative
-        type_mask= mode,  # Position type mask
-        x=pos_x,
-        y=pos_y,
-        z=0,
+        type_mask = mode,  # Position type mask
+        x = pos_x,
+        y = pos_y,
+        z = 0, # change this value later to pos_z (note "up" is a negative z value)
         vx=0.2,
         vy=0.2,
         vz=0.2,
-        afx=0.2,
-        afy=0.05,
-        afz=0.05,
-        yaw = 0,
-        yaw_rate= 0.15
+        afx = 0.2, # ignored by bit mask
+        afy = 0.05, # ignored by bit mask
+        afz = 0.05, # ignored by bit mask
+        yaw = yawInput, # heading
+        yaw_rate = 0.15 # how quickly to approach heading
     )
 
     master.mav.send(msg)
@@ -148,7 +148,11 @@ def main():
             avg, filterPixelCount = calulate_overall_mean(mask, imgx, imgy) # Overall Average
             img_cent = cv2.circle(frame_w_lines, (avg), radius=20, color=(0,0,255), thickness=2) # draw overall average (red circle)
             closest_cent, img_cent = compare_centroid_to_avg(img_cent, imgxMax, contours, avg) # Centroids
-            xMeters, yMeters, dist_m = calc_phys_dist(closest_cent, imgx, imgy, mask, focalLengthTimesWidth, filterPixelCount) # Calculates Distances Using Centroid
+
+            closest_cent_wrt_origin = (closest_cent[0] - imgxMax/2, closest_cent[1] - imgxMax/2) # wrt to origin instead of top left corner
+            closest_cent_FRD = (-1*closest_cent_wrt_origin[0], -1*closest_cent_wrt_origin[1]) # forward is positive, right is positive
+            print(closest_cent_FRD)
+            xMeters, yMeters, dist_m = calc_phys_dist(closest_cent_FRD, imgx, imgy, mask, focalLengthTimesWidth, filterPixelCount) # Calculates Distances Using Centroid
             
             #cv2.imshow('mask', mask)
             #cv2.imshow('centroid', img_cent)
@@ -172,7 +176,7 @@ def main():
                 # not sure if filtered data point should be appended back to signal, because you are refiltering already
                 # filtered data
                 [rel_pos_adj_x, rel_pos_adj_y, dist_m] = bw.filter_data(cent_signal, filename)
-                #pymavlink_data_send(0, -0.1, rel_pos_adj_x, rel_pos_adj_y, dist_m, master)
+                pymavlink_data_send(0, 0, rel_pos_adj_x, rel_pos_adj_y, 0, master) # (yawInput, vel_z, pos_x, pos_y, pos_z, master)
                 print(str(round(time.time() - init_time, 2)) + " " + str(round(rel_pos_adj_x,2)) + " "+ str(round(rel_pos_adj_y,2)) +
                     " " + str(round(dist_m,2)) + "\n")
                 cent_signal = [] 
